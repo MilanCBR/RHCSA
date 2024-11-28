@@ -1,0 +1,117 @@
+-------------------------------------------------------------------------
+Schedule cron job:
+
+Example in : /etc/crontab
+Logger example: 10 * * * * logger hello > this prints 'hello' to log every 10 min
+-------------------------------------------------------------------------
+Setup NTP client:
+
+Nano /etc/chrony.conf
+Allow NTP client> remove # 
+Local stratum> remove #
+Remove pool 2 rhel ******* and replace with: server (IP)
+systemctl restart chronyd 
+firewall-cmd --add-service ntp --permanent
+-------------------------------------------------------------------------
+Tuning:
+
+systemctl status tuned (start if needed)
+tuned-adm list
+tuned-adm-profile xxxxx (insert chosen profile)
+-------------------------------------------------------------------------
+Make Sys jounral persistent:
+
+Edit 'storage' param in /etc/systemd/journal.conf>set to persistent
+-------------------------------------------------------------------------
+TAR WITH Gzip:
+
+tar -czvf testtar testfile
+
+tar = basic command
+-czf = create,using Gzip,while specifying a name
+testtar = Archive name
+testfile = name of tar that is to be made
+mv testtar testtar.tar.gz
+
+-------------------------------------------------------------------------
+Build images from containerfile:
+
+Podman build -t myname .
+Podman build=base command
+-t myname assigns name "myname" to image
+. lets podsman search in current wd
+-------------------------------------------------------------------------
+Running images:
+
+podman run -d -e MARIADB_ROOT_PASSWORD=lol -p 3306:3306 mariadb
+
+podman run = basic command
+-d = background
+-e = set variables
+MARIADB_ROOT_PASSWORD=lol = KEY+VALUE
+-p = set port
+3306:3306 = port value, maps container port to host port
+mariadb = image to run
+
+-------------------------------------------------------------------------
+Running images with persistent storage:
+
+podman run -d -e MARIADB_ROOT_PASSWORD=lol -p 3306:3306 mariadb -v /(hostdir):/(containerdir)
+
+So…
+
+podman run -d -e MARIADB_ROOT_PASSWORD=lol -p 3306:3306 -v /home/test/mytest:/var/libmysql:Z mariadb
+
+-------------------------------------------------------------------------
+Setting password minimum lenght/duration: 
+
+/etc/login.defs
+
+-------------------------------------------------------------------------
+Setting up SSH with root access and specific port:
+
+nano etc/ssh/sshd_config
+PermitRootLogin yes
+Port 2022 (as example)
+sudo systemctl restart sshd
+sudo firewall-cmd --permanent --add-port=2022/tcp
+sudo firewall-cmd --reload
+-------------------------------------------------------------------------
+Make members of group able to use sudo (on all commands):
+
+sudo groupadd sysadmins
+sudo usermod -aG sysadmins linda
+sudo visudo
+%sysadmins ALL=(ALL) ALL
+-------------------------------------------------------------------------
+Configure your system to automatically start a mariadb container. This container should expose its services at port 3306 and use the directory /var/mariadb-container on the host for persistent storage of files it writes to the /var directory:
+
+sudo mkdir -p /var/mariadb-container
+sudo chown 1001:1001 /var/mariadb-container
+sudo podman run -d  --name mariadb-container -e MYSQL_ROOT_PASSWORD=my-secret-password -p 3306:3306 -v /var/mariadb-container:/var/lib/mysql mariadb
+sudo podman generate systemd --name mariadb-container --new > /etc/systemd/system/podman-mariadb-container.service
+sudo systemctl enable podman-mariadb-container.service
+
+-------------------------------------------------------------------------
+Create shared group directories /groups/sales and /groups/data, and make sure the groups meet the following requirements:
+
+1:Members of the group sales have full access to their directory.
+2:Members of the group data have full access to their directory.
+3:Others has no access to any of the directories.
+4:Alex is general manager, so user alex has read access to all files in both directories and has permissions to delete all files that are created in both directories.
+
+sudo groupadd sales
+sudo groupadd data
+sudo mkdir -p /groups/sales
+sudo mkdir -p /groups/data
+sudo chown :sales /groups/sales
+sudo chown :data /groups/data
+sudo chmod 770 /groups/sales
+sudo chmod 770 /groups/data
+sudo usermod -aG sales alex
+sudo usermod -aG data alex
+sudo chown alex:sales /groups/sales
+sudo chown alex:data /groups/data
+sudo nano /etc/profile + (add following line) umask 007
+source /etc/profile
+
